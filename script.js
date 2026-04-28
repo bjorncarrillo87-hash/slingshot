@@ -67,6 +67,22 @@ function updateHUD() {
   const remaining = Math.max(0, getLevel(currentLevel).catLimit - catsUsed);
   elCatsLeft.textContent = remaining;
 
+  // Show tier badge on level number
+  const tier = getTier(currentLevel);
+  const elTierBadge = document.getElementById("tier-badge");
+  if (elTierBadge) {
+    elTierBadge.textContent = tier.label;
+    elTierBadge.style.color = tier.color;
+  }
+
+  // Show saved stars for current level
+  const savedStars = (playerState.levelStars || {})[currentLevel] || 0;
+  const elStarsHud = document.getElementById("stars-hud");
+  if (elStarsHud) {
+    elStarsHud.textContent = savedStars > 0 ? "★".repeat(savedStars) + "☆".repeat(3 - savedStars) : "☆☆☆";
+    elStarsHud.style.color = savedStars > 0 ? "#ffd700" : "#444";
+  }
+
   Object.keys(BOOSTERS).forEach((key) => {
     const cnt = document.getElementById("cnt-" + key);
     if (cnt) cnt.textContent = playerState.boosters[key] || 0;
@@ -337,19 +353,25 @@ function checkWin() {
 
   gamePhase = "won";
   const cfg = getLevel(currentLevel);
-  const bonus = Math.max(0, cfg.catLimit - catsUsed) * 50;
+  const catsLeft = Math.max(0, cfg.catLimit - catsUsed);
+  const bonus = catsLeft * 50;
   score += bonus;
   elScoreCount.textContent = score;
 
-  playerState.gems += GAME_CONFIG.gemsPerLevel;
+  const stars = calcStars(score, cfg.targetScore, catsUsed, cfg.catLimit);
+
+  playerState.gems += GAME_CONFIG.gemsPerLevel + (stars * 5);
   playerState.stats.levelsCompleted++;
   playerState.stats.gamesWon++;
   playerState.stats.totalScore += score;
+  if (!playerState.levelStars) playerState.levelStars = {};
+  const prevStars = playerState.levelStars[currentLevel] || 0;
+  if (stars > prevStars) playerState.levelStars[currentLevel] = stars;
   const best = playerState.highScores[currentLevel] || 0;
   if (score > best) playerState.highScores[currentLevel] = score;
-  if (currentLevel < TOTAL_LEVELS) playerState.currentLevel = currentLevel + 1;
+  if (currentLevel < TOTAL_LEVELS) playerState.currentLevel = Math.max(playerState.currentLevel || 1, currentLevel + 1);
   savePlayerState(playerState);
-  setTimeout(() => showScreen("win"), 800);
+  setTimeout(() => showScreen("win", stars), 800);
 }
 
 function triggerLose() {
@@ -444,25 +466,35 @@ function drawAimGuide(start, vel) {
 }
 
 // ── Screen overlay ────────────────────────────────────────────────────────────
-function showScreen(type) {
+function starsHTML(n) {
+  return `<span class="stars-display">${"★".repeat(n)}<span class="stars-empty">${"☆".repeat(3 - n)}</span></span>`;
+}
+
+function showScreen(type, stars) {
   elOverlay.classList.remove("hidden");
   elScreenBtns.innerHTML = "";
+  const tier = getTier(currentLevel);
 
   if (type === "win") {
     const next = currentLevel + 1;
-    elScreenTitle.textContent = "🏆 Level Complete!";
+    const gemBonus = GAME_CONFIG.gemsPerLevel + (stars * 5);
+    const isLast = currentLevel >= TOTAL_LEVELS;
+    elScreenTitle.innerHTML = isLast ? "🎉 You Won POUNCE!" : "🏆 Level Complete!";
     elScreenBody.innerHTML =
+      starsHTML(stars) + "<br>" +
+      `<span class="tier-label" style="color:${tier.color}">${tier.label}</span> Level ${currentLevel}<br>` +
       `Score: <strong>${score}</strong><br>` +
-      `+${GAME_CONFIG.gemsPerLevel} 💎 earned<br>` +
-      (next <= TOTAL_LEVELS ? `Ready for Level ${next}?` : "You cleared all levels! 🎉");
-    if (next <= TOTAL_LEVELS) addBtn("Next Level ▶", "primary", () => loadLevel(next));
+      `+${gemBonus} 💎 earned` +
+      (isLast ? "<br><em>All levels cleared!</em>" : "");
+    if (!isLast) addBtn("Next Level ▶", "primary", () => loadLevel(next));
     addBtn("Replay", "secondary", () => loadLevel(currentLevel));
     addBtn("Levels", "secondary", showLevelSelect);
   } else if (type === "lose") {
-    elScreenTitle.textContent = "😿 Failed!";
+    elScreenTitle.textContent = "😿 Level Failed!";
     elScreenBody.innerHTML =
+      `<span class="tier-label" style="color:${tier.color}">${tier.label}</span> Level ${currentLevel}<br>` +
       `Lives: <strong>${playerState.lives} ❤️</strong><br>` +
-      (playerState.lives === 0 ? "Out of lives! Wait 30 min or spend 99 💎" : "Want to try again?");
+      (playerState.lives === 0 ? "Out of lives! Wait 30 min or use 99 💎" : "Try again?");
     if (playerState.lives > 0) {
       addBtn("Retry 🔄", "primary", () => loadLevel(currentLevel));
     } else {
@@ -493,27 +525,46 @@ function addBtn(label, style, cb) {
 
 function showLevelSelect() {
   elOverlay.classList.remove("hidden");
-  elScreenTitle.textContent = "🗺️ Levels";
-  elScreenBody.textContent = "Choose a level:";
+  elScreenTitle.textContent = "🗺️ Level Select";
   elScreenBtns.innerHTML = "";
+
   const unlocked = playerState.currentLevel || 1;
-  for (let i = 1; i <= TOTAL_LEVELS; i++) {
-    const best = playerState.highScores[i];
-    const ok = i <= unlocked;
-    const btn = document.createElement("button");
-    btn.className = "screen-btn btn-secondary";
-    btn.style.opacity = ok ? "1" : "0.35";
-    btn.textContent = `L${i}` + (best ? ` ★${best}` : "");
-    btn.disabled = !ok;
-    btn.addEventListener("click", () => { elOverlay.classList.add("hidden"); loadLevel(i); });
-    elScreenBtns.appendChild(btn);
-  }
+  const levelStars = playerState.levelStars || {};
+
+  // Group by tier
+  const tierOrder = ["easy", "medium", "hard", "brutal"];
+  tierOrder.forEach((tierKey) => {
+    const t = DIFFICULTY_TIERS[tierKey];
+    const header = document.createElement("div");
+    header.className = "tier-header";
+    header.innerHTML = `<span style="color:${t.color}">── ${t.label} ──</span>`;
+    elScreenBtns.appendChild(header);
+
+    for (let i = t.levels[0]; i <= t.levels[1]; i++) {
+      const ok = i <= unlocked;
+      const stars = levelStars[i] || 0;
+      const btn = document.createElement("button");
+      btn.className = "screen-btn level-select-btn";
+      btn.style.borderColor = ok ? t.color : "#333";
+      btn.style.opacity = ok ? "1" : "0.3";
+      btn.innerHTML =
+        `<span class="lsb-num">${i}</span>` +
+        `<span class="lsb-stars" style="color:${stars > 0 ? "#ffd700" : "#444"}">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</span>`;
+      btn.disabled = !ok;
+      btn.title = ok ? `Level ${i} — ${t.label}` : "Locked";
+      btn.addEventListener("click", () => { elOverlay.classList.add("hidden"); loadLevel(i); });
+      elScreenBtns.appendChild(btn);
+    }
+  });
+
   const back = document.createElement("button");
   back.className = "screen-btn btn-secondary";
   back.textContent = "← Back";
-  back.style.marginTop = "12px";
+  back.style.marginTop = "16px";
   back.addEventListener("click", () => elOverlay.classList.add("hidden"));
   elScreenBtns.appendChild(back);
+
+  elScreenBody.textContent = "";
 }
 
 // ── Load level ────────────────────────────────────────────────────────────────
@@ -524,6 +575,10 @@ function loadLevel(num) {
   gamePhase = "playing";
   activeBooster = null;
   elOverlay.classList.add("hidden");
+
+  // Tier-based sky colour
+  const tier = getTier(currentLevel);
+  render.options.background = tier.bg;
 
   clearLevel();
   buildLevel(getLevel(currentLevel));
