@@ -1,73 +1,324 @@
-/* Shape colors cannot be global root variables in matter.js script (for now) */
-
 :root {
-	--body-color: #18181d;
-	--purple: #833ab4;
-	--red: #fd1d1d;
-	--yellow: #ffcd01;
-	--blue: #0496ff;
-	--orange: #ff6a03;
-	--white: #fff;
-	--pink: #ff45ff;
-	--github-fill: var(--white);
-	--github-color: var(--body-color);
-	--github-focus: var(--orange);
+  --bg: #1a1a2e;
+  --panel: #16213e;
+  --accent: #e94560;
+  --accent2: #0f3460;
+  --gold: #ffd700;
+  --gem: #00d4ff;
+  --white: #f0f0f0;
+  --muted: #888;
+  --green: #4caf50;
+  --red: #f44336;
+  --cat-orange: #ff8c00;
+  --cat-chonky: #ffa500;
+  --cat-ninja: #8b4513;
+  --cat-sleepy: #ff69b4;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-	width: 100vw;
-	height: 100vh;
-	margin: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-color: var(--body-color);
-	cursor: pointer;
+  width: 100vw;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--white);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
 }
 
-p {
-	color: var(--white);
-	z-index: -10;
+/* ── HUD ── */
+#hud {
+  width: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel);
+  border-bottom: 2px solid var(--accent2);
+  padding: 6px 16px;
+  gap: 12px;
 }
 
-/* canvas {
-  width: 100%;
-  height: 100vh;
-} */
-
-.github-corner:focus svg path {
-	fill: var(--github-focus);
+#hud-left,
+#hud-right {
+  display: flex;
+  gap: 20px;
+  align-items: center;
 }
 
-.github-corner:focus .octo-arm,
-.github-corner:focus .octo-body {
-	fill: var(--github-color);
+#hud-center {
+  flex: 1;
+  text-align: center;
 }
 
-.github-corner:focus .octo-arm,
-.github-corner:hover .octo-arm {
-	animation: octocat-wave 560ms ease-in-out;
+#game-title {
+  font-size: 1.6rem;
+  letter-spacing: 4px;
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent);
+  margin: 0;
 }
 
-@keyframes octocat-wave {
-	0%,
-	100% {
-		transform: rotate(0);
-	}
-
-	20%,
-	60% {
-		transform: rotate(-25deg);
-	}
-
-	40%,
-	80% {
-		transform: rotate(10deg);
-	}
+.hud-label {
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-right: 4px;
 }
 
-@media (max-width: 500px) {
-	.github-corner {
-		display: none;
-	}
+#lives-icons {
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+#level-num,
+#gems-count,
+#score-count {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+#gems-count {
+  color: var(--gem);
+}
+
+/* ── Cat Selector ── */
+#cat-selector {
+  width: 1200px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--accent2);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cat-btn {
+  background: var(--accent2);
+  color: var(--white);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.cat-btn:hover {
+  border-color: var(--accent);
+}
+
+.cat-btn.active {
+  border-color: var(--cat-orange);
+  background: rgba(255, 140, 0, 0.25);
+  color: var(--gold);
+}
+
+.cat-btn[data-cat="chonky"].active {
+  border-color: var(--cat-chonky);
+}
+.cat-btn[data-cat="ninja"].active {
+  border-color: var(--cat-ninja);
+}
+.cat-btn[data-cat="sleepy"].active {
+  border-color: var(--cat-sleepy);
+  background: rgba(255, 105, 180, 0.2);
+}
+
+#cats-left-display {
+  margin-left: auto;
+  font-size: 0.9rem;
+}
+
+#cats-left {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ── Booster Bar ── */
+#booster-bar {
+  width: 1200px;
+  background: rgba(15, 52, 96, 0.6);
+  border-bottom: 1px solid var(--accent2);
+  padding: 4px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.booster-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid #333;
+  border-radius: 5px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.15s;
+}
+
+.booster-btn:hover:not(:disabled) {
+  border-color: var(--gem);
+  color: var(--white);
+}
+
+.booster-btn.active-booster {
+  border-color: var(--gem);
+  color: var(--gem);
+  background: rgba(0, 212, 255, 0.15);
+  text-shadow: 0 0 6px var(--gem);
+}
+
+.booster-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Game Canvas ── */
+#game-container {
+  width: 1200px;
+  position: relative;
+}
+
+#game-container canvas {
+  display: block;
+}
+
+/* ── Overlay Screen ── */
+#screen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#screen-overlay.hidden {
+  display: none;
+}
+
+#screen-box {
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 40px 60px;
+  text-align: center;
+  min-width: 340px;
+  box-shadow: 0 0 40px rgba(233, 69, 96, 0.3);
+}
+
+#screen-title {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  color: var(--gold);
+}
+
+#screen-body {
+  font-size: 1rem;
+  color: var(--white);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+#screen-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.screen-btn {
+  padding: 10px 28px;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.screen-btn:hover {
+  opacity: 0.85;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--white);
+}
+
+.btn-secondary {
+  background: var(--accent2);
+  color: var(--white);
+}
+
+.btn-gem {
+  background: var(--gem);
+  color: #000;
+}
+
+/* ── Daily Bonus ── */
+#daily-bonus-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+#daily-bonus-popup.hidden {
+  display: none;
+}
+
+#daily-bonus-box {
+  background: var(--panel);
+  border: 2px solid var(--gold);
+  border-radius: 16px;
+  padding: 36px 52px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(255, 215, 0, 0.35);
+}
+
+#daily-bonus-box h2 {
+  font-size: 1.8rem;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+#daily-bonus-text {
+  font-size: 1rem;
+  margin-bottom: 20px;
+  color: var(--white);
+}
+
+#daily-bonus-ok {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 32px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── Enemy health bars (drawn via DOM overlay) ── */
+.enemy-label {
+  position: absolute;
+  font-size: 1.2rem;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
 }

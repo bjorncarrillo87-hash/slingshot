@@ -1,10 +1,83 @@
-<p id="header"><p>
+# 🐱 POUNCE — Physics-Based Cat Puzzle Game
 
-<table><tr>
-<td> <a href="https://github.com/emjose/kboard/#header"><img src="https://res.cloudinary.com/dn1e07eul/image/upload/v1659330996/Readme%20Headers/header-left_ctkix5.png" alt="previous" style="width: 200px;"/></a> </td>
-<td> <a href="https://github.com/emjose/one-hundred/#header"><img src="https://res.cloudinary.com/dn1e07eul/image/upload/v1659330606/Readme%20Headers/header-center_bkbdbt.png" alt="100 days of code" style="width: 580px;"/></a> </td>
-<td> <a href="https://github.com/emjose/toast-notifications/#header"><img src="https://res.cloudinary.com/dn1e07eul/image/upload/v1659330646/Readme%20Headers/header-right_eftaz9.png" alt="next" style="width: 200px;"/></a> </td>
-</tr></table>
+A browser-based physics puzzle game built on [Matter.js](https://brm.io/matter-js/).
+Launch cats at mice, pigeons, dogs, and squirrels across 10 handcrafted levels.
+
+---
+
+## How to Play
+
+1. Serve locally: `python3 -m http.server` then open `http://localhost:8000`
+2. Choose a **cat type** from the selector bar
+3. **Click and drag** the cat on the slingshot, then **release** to fire
+4. Eliminate all enemies to advance to the next level
+5. Earn **boosters** via daily login bonus
+
+---
+
+## Cat Types
+
+| Cat | Mass | Bounce | Style |
+|-----|------|--------|-------|
+| 🟠 Orange Tabby | 1.0 | 0.7 | Balanced, all-around |
+| 🔶 Chonky Cat | 2.0 | 0.5 | Slow but hits hard |
+| 🟫 Ninja Cat | 0.7 | 0.9 | Fast & bouncy |
+| 🩷 Sleepy Cat | 1.2 | 1.1 | Unpredictable extra bounce |
+
+## Enemy Types
+
+| Enemy | Health | Points |
+|-------|--------|--------|
+| 🐭 Garden Mouse | 1 | 100 |
+| 🐿️ Squirrel | 1 | 150 |
+| 🕊️ Pigeon | 2 | 200 |
+| 🐕 Dog Pup | 3 | 300 |
+
+## Boosters
+
+| Booster | Effect | Cost |
+|---------|--------|------|
+| ☄️ Meteor Shower | 2x impact damage | 99 💎 |
+| 💪 Super Strength | +50% launch power | 99 💎 |
+| 🐌 Slow Motion | Freeze enemies on shot | 99 💎 |
+| 🐱 Cat Swarm | Launch 3 cats | 199 💎 |
+
+---
+
+## Project Structure
+
+```
+pounce/
+├── index.html          # Game shell + HUD
+├── style.css           # POUNCE branding & layout
+├── script.js           # Game engine (Matter.js integration)
+├── matter.js           # Physics engine
+├── data/
+│   ├── cats.js         # Cat type definitions
+│   ├── enemies.js      # Enemy type definitions
+│   ├── levels.js       # Level configurations (10 levels)
+│   ├── game-config.js  # Global constants
+│   └── monetization.js # Lives, gems, boosters, daily bonus
+└── Assets/             # Images and icons
+```
+
+---
+
+## Phases Completed
+
+- **Phase 1** — Foundation setup (slingshot base)
+- **Phase 2** — Rebrand to POUNCE (cats, enemies, POUNCE theme)
+- **Phase 3** — 4 cat types with unique physics properties
+- **Phase 4** — 4 enemy types + 10-level configuration system
+- **Phase 5** — Monetization architecture (lives, gems, boosters, daily bonus)
+
+---
+
+Built with vanilla JavaScript + Matter.js. No frameworks, no backend.
+
+---
+
+## Original Foundation
 
 <br>
 
