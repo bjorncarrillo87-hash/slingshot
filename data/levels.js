@@ -1,9 +1,15 @@
 "use strict";
 
-// Canvas dimensions: 1200 x 650
-// Slingshot anchor: x=200, y=480
-// Ground: y=580
-// Enemy placement zone: x=600–1100, y=varies
+// Ground surface Y = 580
+// Base platform:    y=565, h=14 → top=558
+// Raised platform:  y=495, h=12 → top=489
+// High platform:    y=435, h=12 → top=429
+//
+// Enemy center Y = platformTop - enemyRadius
+//   mouse   r=10: base=548, raised=479, high=419
+//   squirrel r=11: base=547, raised=478, high=418
+//   pigeon  r=13: base=545, raised=476, high=416
+//   dog     r=16: base=542, raised=473, high=413
 
 const LEVELS = [
   {
@@ -11,11 +17,11 @@ const LEVELS = [
     catLimit: 5,
     targetScore: 200,
     enemies: [
-      { type: "mouse", x: 750, y: 545 },
-      { type: "mouse", x: 850, y: 545 },
+      { type: "mouse", x: 760, y: 548 },
+      { type: "mouse", x: 850, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 800, y: 560, w: 120, h: 15 },
+      { x: 800, y: 565, w: 160, h: 14 },
     ],
   },
   {
@@ -23,12 +29,12 @@ const LEVELS = [
     catLimit: 5,
     targetScore: 400,
     enemies: [
-      { type: "mouse", x: 750, y: 545 },
-      { type: "mouse", x: 850, y: 545 },
-      { type: "mouse", x: 950, y: 545 },
+      { type: "mouse", x: 740, y: 548 },
+      { type: "mouse", x: 850, y: 548 },
+      { type: "mouse", x: 960, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 850, y: 560, w: 200, h: 15 },
+      { x: 850, y: 565, w: 280, h: 14 },
     ],
   },
   {
@@ -36,13 +42,13 @@ const LEVELS = [
     catLimit: 6,
     targetScore: 500,
     enemies: [
-      { type: "mouse", x: 700, y: 545 },
-      { type: "pigeon", x: 820, y: 490 },
-      { type: "mouse", x: 950, y: 545 },
+      { type: "mouse",  x: 730, y: 548 },
+      { type: "pigeon", x: 860, y: 476 },
+      { type: "mouse",  x: 990, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 820, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 820, y: 560, w: 250, h: 15 },
+      { x: 860, y: 495, w: 100, h: 12 },
+      { x: 860, y: 565, w: 340, h: 14 },
     ],
   },
   {
@@ -50,14 +56,14 @@ const LEVELS = [
     catLimit: 6,
     targetScore: 700,
     enemies: [
-      { type: "pigeon", x: 720, y: 490 },
-      { type: "mouse", x: 820, y: 545 },
-      { type: "pigeon", x: 950, y: 490 },
+      { type: "pigeon", x: 730, y: 476 },
+      { type: "mouse",  x: 850, y: 548 },
+      { type: "pigeon", x: 970, y: 476 },
     ],
     obstacles: [
-      { shape: "rect", x: 720, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 950, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 835, y: 560, w: 300, h: 15 },
+      { x: 730, y: 495, w: 100, h: 12 },
+      { x: 970, y: 495, w: 100, h: 12 },
+      { x: 850, y: 565, w: 360, h: 14 },
     ],
   },
   {
@@ -65,14 +71,14 @@ const LEVELS = [
     catLimit: 7,
     targetScore: 900,
     enemies: [
-      { type: "mouse", x: 680, y: 545 },
-      { type: "pigeon", x: 780, y: 490 },
-      { type: "squirrel", x: 880, y: 545 },
-      { type: "mouse", x: 980, y: 545 },
+      { type: "mouse",    x: 710, y: 548 },
+      { type: "pigeon",   x: 840, y: 476 },
+      { type: "squirrel", x: 940, y: 547 },
+      { type: "mouse",    x: 1040, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 780, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 830, y: 560, w: 350, h: 15 },
+      { x: 840, y: 495, w: 100, h: 12 },
+      { x: 880, y: 565, w: 400, h: 14 },
     ],
   },
   {
@@ -80,15 +86,15 @@ const LEVELS = [
     catLimit: 7,
     targetScore: 1100,
     enemies: [
-      { type: "squirrel", x: 700, y: 545 },
-      { type: "pigeon", x: 800, y: 440 },
-      { type: "squirrel", x: 900, y: 545 },
-      { type: "mouse", x: 1000, y: 545 },
+      { type: "squirrel", x: 730,  y: 547 },
+      { type: "pigeon",   x: 860,  y: 416 },
+      { type: "squirrel", x: 950,  y: 547 },
+      { type: "mouse",    x: 1050, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 800, y: 460, w: 80, h: 12 },
-      { shape: "rect", x: 800, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 850, y: 560, w: 360, h: 15 },
+      { x: 860, y: 435, w: 100, h: 12 },
+      { x: 860, y: 495, w: 100, h: 12 },
+      { x: 890, y: 565, w: 400, h: 14 },
     ],
   },
   {
@@ -96,13 +102,13 @@ const LEVELS = [
     catLimit: 8,
     targetScore: 1400,
     enemies: [
-      { type: "dog", x: 780, y: 530 },
-      { type: "mouse", x: 680, y: 545 },
-      { type: "mouse", x: 900, y: 545 },
+      { type: "mouse", x: 700, y: 548 },
+      { type: "dog",   x: 840, y: 473 },
+      { type: "mouse", x: 970, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 780, y: 555, w: 100, h: 15 },
-      { shape: "rect", x: 790, y: 560, w: 320, h: 15 },
+      { x: 840, y: 495, w: 110, h: 12 },
+      { x: 840, y: 565, w: 360, h: 14 },
     ],
   },
   {
@@ -110,14 +116,14 @@ const LEVELS = [
     catLimit: 8,
     targetScore: 1700,
     enemies: [
-      { type: "dog", x: 760, y: 530 },
-      { type: "pigeon", x: 880, y: 490 },
-      { type: "mouse", x: 990, y: 545 },
+      { type: "dog",    x: 760, y: 473 },
+      { type: "pigeon", x: 910, y: 476 },
+      { type: "mouse",  x: 1020, y: 548 },
     ],
     obstacles: [
-      { shape: "rect", x: 760, y: 555, w: 90, h: 15 },
-      { shape: "rect", x: 880, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 875, y: 560, w: 290, h: 15 },
+      { x: 760, y: 495, w: 110, h: 12 },
+      { x: 910, y: 495, w: 100, h: 12 },
+      { x: 890, y: 565, w: 340, h: 14 },
     ],
   },
   {
@@ -125,15 +131,15 @@ const LEVELS = [
     catLimit: 8,
     targetScore: 2000,
     enemies: [
-      { type: "squirrel", x: 670, y: 545 },
-      { type: "dog", x: 790, y: 528 },
-      { type: "pigeon", x: 910, y: 490 },
-      { type: "squirrel", x: 1020, y: 545 },
+      { type: "squirrel", x: 690,  y: 547 },
+      { type: "dog",      x: 830,  y: 473 },
+      { type: "pigeon",   x: 960,  y: 476 },
+      { type: "squirrel", x: 1060, y: 547 },
     ],
     obstacles: [
-      { shape: "rect", x: 790, y: 555, w: 100, h: 15 },
-      { shape: "rect", x: 910, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 845, y: 560, w: 400, h: 15 },
+      { x: 830,  y: 495, w: 110, h: 12 },
+      { x: 960,  y: 495, w: 100, h: 12 },
+      { x: 875,  y: 565, w: 460, h: 14 },
     ],
   },
   {
@@ -141,15 +147,15 @@ const LEVELS = [
     catLimit: 9,
     targetScore: 2500,
     enemies: [
-      { type: "dog", x: 720, y: 528 },
-      { type: "dog", x: 870, y: 528 },
-      { type: "pigeon", x: 1000, y: 490 },
+      { type: "dog",    x: 750,  y: 473 },
+      { type: "dog",    x: 910,  y: 473 },
+      { type: "pigeon", x: 1040, y: 476 },
     ],
     obstacles: [
-      { shape: "rect", x: 720, y: 555, w: 90, h: 15 },
-      { shape: "rect", x: 870, y: 555, w: 90, h: 15 },
-      { shape: "rect", x: 1000, y: 510, w: 80, h: 12 },
-      { shape: "rect", x: 860, y: 560, w: 340, h: 15 },
+      { x: 750,  y: 495, w: 110, h: 12 },
+      { x: 910,  y: 495, w: 110, h: 12 },
+      { x: 1040, y: 495, w:  90, h: 12 },
+      { x: 900,  y: 565, w: 420, h: 14 },
     ],
   },
 ];

@@ -7,6 +7,7 @@ const H = GAME_CONFIG.canvas.height;
 const SLING_X = GAME_CONFIG.slingAnchor.x;
 const SLING_Y = GAME_CONFIG.slingAnchor.y;
 const GROUND_Y = GAME_CONFIG.groundY;
+const MAX_PULL = 110; // max pixels cat can be dragged from anchor
 
 // ── Engine setup (created once, never cleared) ────────────────────────────────
 const engine = Engine.create({ gravity: { y: 1 } });
@@ -145,7 +146,9 @@ function buildLevel(levelConfig) {
   enemies = levelConfig.enemies.map((e) => {
     const props = getEnemyProperties(e.type);
     const body = Bodies.circle(e.x, e.y, props.radius, {
-      restitution: 0.4, friction: 0.5,
+      restitution: 0.2,
+      friction: 0.8,
+      frictionAir: 0.08,
       render: { fillStyle: props.color },
       label: "enemy_" + e.type,
     });
@@ -180,6 +183,19 @@ function spawnCat() {
   World.add(engine.world, [catBody, slingConstraint]);
   firing = false;
 }
+
+// Release drag if mouse button lifted outside the canvas
+window.addEventListener("mouseup", () => {
+  if (!firing && catBody && gamePhase === "playing") {
+    const dx = catBody.position.x - SLING_X;
+    const dy = catBody.position.y - SLING_Y;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      firing = true;
+      catsUsed++;
+      updateHUD();
+    }
+  }
+});
 
 // ── Launch (mouse release) ────────────────────────────────────────────────────
 Events.on(mouseConstraint, "enddrag", (e) => {
@@ -262,6 +278,20 @@ function tryDamage(attacker, target) {
 // ── Single afterUpdate handler ────────────────────────────────────────────────
 Events.on(engine, "afterUpdate", () => {
   if (gamePhase !== "playing") return;
+
+  // Clamp pull distance so cat can't be dragged off-screen or past max pull
+  if (catBody && !firing) {
+    const dx = catBody.position.x - SLING_X;
+    const dy = catBody.position.y - SLING_Y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > MAX_PULL) {
+      Body.setPosition(catBody, {
+        x: SLING_X + (dx / dist) * MAX_PULL,
+        y: SLING_Y + (dy / dist) * MAX_PULL,
+      });
+      Body.setVelocity(catBody, { x: 0, y: 0 });
+    }
+  }
 
   // Detach sling constraint once cat moves far enough away
   if (firing && catBody && slingConstraint) {
