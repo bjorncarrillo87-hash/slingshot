@@ -7,9 +7,10 @@ const H = GAME_CONFIG.canvas.height;
 const SLING_X = GAME_CONFIG.slingAnchor.x;
 const SLING_Y = GAME_CONFIG.slingAnchor.y;
 const GROUND_Y = GAME_CONFIG.groundY;
-const MAX_PULL = 110; // max pixels cat can be dragged from anchor
+const MAX_PULL = 110;
+const MIN_DRAG = 15; // minimum pixels of pull before a launch is registered
 
-// ── Engine setup (created once, never cleared) ────────────────────────────────
+// ── Engine (created once, never cleared) ──────────────────────────────────────
 const engine = Engine.create({ gravity: { y: 1 } });
 const runner = Runner.create();
 const render = Render.create({
@@ -18,7 +19,7 @@ const render = Render.create({
   options: { width: W, height: H, wireframes: false, background: "#0d1b2a" },
 });
 
-// ── Mouse (created once, stays alive across levels) ──────────────────────────
+// ── Mouse (created once, lives across levels) ─────────────────────────────────
 const mouse = Mouse.create(render.canvas);
 const mouseConstraint = MouseConstraint.create(engine, {
   mouse,
@@ -32,6 +33,7 @@ let playerState = loadPlayerState();
 let currentLevel = playerState.currentLevel || 1;
 let selectedCat = "orange";
 let activeBooster = null;
+let pendingBooster = null;   // booster locked in at drag-release, applied when sling detaches
 let score = 0;
 let catsUsed = 0;
 let catBody = null;
@@ -39,9 +41,10 @@ let slingConstraint = null;
 let firing = false;
 let gamePhase = "idle";
 
-// Bodies managed per-level (cleared on reload)
-let enemies = [];    // { body, type, health, maxHealth, points }
-let levelBodies = []; // obstacles + ground + posts
+// Bodies managed per-level
+let enemies = [];     // { body, type, health, maxHealth, points }
+let levelBodies = []; // ground, walls, posts, obstacles
+let swarmBodies = []; // extra cats from catSwarm booster
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const elLivesIcons  = document.getElementById("lives-icons");
@@ -67,7 +70,6 @@ function updateHUD() {
   const remaining = Math.max(0, getLevel(currentLevel).catLimit - catsUsed);
   elCatsLeft.textContent = remaining;
 
-  // Show tier badge on level number
   const tier = getTier(currentLevel);
   const elTierBadge = document.getElementById("tier-badge");
   if (elTierBadge) {
@@ -75,11 +77,12 @@ function updateHUD() {
     elTierBadge.style.color = tier.color;
   }
 
-  // Show saved stars for current level
   const savedStars = (playerState.levelStars || {})[currentLevel] || 0;
   const elStarsHud = document.getElementById("stars-hud");
   if (elStarsHud) {
-    elStarsHud.textContent = savedStars > 0 ? "★".repeat(savedStars) + "☆".repeat(3 - savedStars) : "☆☆☆";
+    elStarsHud.textContent = savedStars > 0
+      ? "★".repeat(savedStars) + "☆".repeat(3 - savedStars)
+      : "☆☆☆";
     elStarsHud.style.color = savedStars > 0 ? "#ffd700" : "#444";
   }
 
@@ -115,39 +118,38 @@ document.querySelectorAll(".booster-btn").forEach((btn) => {
 
 // ── Level body management ─────────────────────────────────────────────────────
 function clearLevel() {
-  // Remove per-level bodies without touching mouseConstraint or engine runner
   levelBodies.forEach((b) => World.remove(engine.world, b));
   enemies.forEach((e) => { if (e.health > 0) World.remove(engine.world, e.body); });
+  // Remove swarm cats from previous level
+  swarmBodies.forEach((b) => { try { World.remove(engine.world, b); } catch (_) {} });
   if (catBody) { World.remove(engine.world, catBody); catBody = null; }
   if (slingConstraint) { World.remove(engine.world, slingConstraint); slingConstraint = null; }
   levelBodies = [];
   enemies = [];
+  swarmBodies = [];
   firing = false;
+  pendingBooster = null;
 }
 
 function buildLevel(levelConfig) {
-  // Ground
   const ground = Bodies.rectangle(W / 2, GROUND_Y + 10, W, 20, {
     isStatic: true, label: "ground",
     render: { fillStyle: "#2d5a27" },
   });
-  // Walls
-  const wallL = Bodies.rectangle(-5, H / 2, 10, H, { isStatic: true, render: { visible: false } });
-  const wallR = Bodies.rectangle(W + 5, H / 2, 10, H, { isStatic: true, render: { visible: false } });
-  const ceiling = Bodies.rectangle(W / 2, -5, W, 10, { isStatic: true, render: { visible: false } });
-  // Slingshot posts
-  const postL = Bodies.rectangle(SLING_X - 14, SLING_Y + 30, 8, 80, {
+  const wallL   = Bodies.rectangle(-5,    H / 2, 10, H, { isStatic: true, render: { visible: false } });
+  const wallR   = Bodies.rectangle(W + 5, H / 2, 10, H, { isStatic: true, render: { visible: false } });
+  const ceiling = Bodies.rectangle(W / 2, -5,    W, 10, { isStatic: true, render: { visible: false } });
+  const postL   = Bodies.rectangle(SLING_X - 14, SLING_Y + 30, 8, 80, {
     isStatic: true, label: "sling-post",
     render: { fillStyle: "#5c3d11" },
     collisionFilter: { mask: 0 },
   });
-  const postR = Bodies.rectangle(SLING_X + 14, SLING_Y + 30, 8, 80, {
+  const postR   = Bodies.rectangle(SLING_X + 14, SLING_Y + 30, 8, 80, {
     isStatic: true, label: "sling-post",
     render: { fillStyle: "#5c3d11" },
     collisionFilter: { mask: 0 },
   });
 
-  // Obstacles
   const obstacles = levelConfig.obstacles.map((o) =>
     Bodies.rectangle(o.x, o.y, o.w, o.h, {
       isStatic: true, label: "obstacle",
@@ -158,7 +160,6 @@ function buildLevel(levelConfig) {
   levelBodies = [ground, wallL, wallR, ceiling, postL, postR, ...obstacles];
   World.add(engine.world, levelBodies);
 
-  // Enemies
   enemies = levelConfig.enemies.map((e) => {
     const props = getEnemyProperties(e.type);
     const body = Bodies.circle(e.x, e.y, props.radius, {
@@ -173,10 +174,10 @@ function buildLevel(levelConfig) {
   });
 }
 
-// ── Spawn next cat on sling ───────────────────────────────────────────────────
+// ── Spawn cat on sling ────────────────────────────────────────────────────────
 function spawnCat() {
-  if (catBody) { World.remove(engine.world, catBody); catBody = null; }
-  if (slingConstraint) { World.remove(engine.world, slingConstraint); slingConstraint = null; }
+  if (catBody)        { World.remove(engine.world, catBody);        catBody = null; }
+  if (slingConstraint){ World.remove(engine.world, slingConstraint); slingConstraint = null; }
 
   const levelConfig = getLevel(currentLevel);
   if (catsUsed >= levelConfig.catLimit) return;
@@ -200,44 +201,38 @@ function spawnCat() {
   firing = false;
 }
 
-// Release drag if mouse button lifted outside the canvas
-window.addEventListener("mouseup", () => {
-  if (!firing && catBody && gamePhase === "playing") {
-    const dx = catBody.position.x - SLING_X;
-    const dy = catBody.position.y - SLING_Y;
-    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-      firing = true;
-      catsUsed++;
-      updateHUD();
-    }
-  }
-});
+// ── Drag helpers ──────────────────────────────────────────────────────────────
+function currentDragDist() {
+  if (!catBody) return 0;
+  const dx = catBody.position.x - SLING_X;
+  const dy = catBody.position.y - SLING_Y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
-// ── Launch (mouse release) ────────────────────────────────────────────────────
-Events.on(mouseConstraint, "enddrag", (e) => {
-  if (e.body !== catBody || gamePhase !== "playing") return;
-
-  // Apply superStrength velocity boost before sling releases
-  if (activeBooster === "superStrength") {
-    const vel = catBody.velocity;
-    Body.setVelocity(catBody, { x: vel.x * 1.5, y: vel.y * 1.5 });
-    consumeBooster("superStrength");
-  }
-  if (activeBooster === "slowMotion") {
-    enemies.forEach((en) => { if (en.health > 0) Body.setVelocity(en.body, { x: 0, y: 0 }); });
-    consumeBooster("slowMotion");
-  }
-
+function registerLaunch() {
+  // Lock in the booster at the moment of release — applied when sling detaches
+  pendingBooster = activeBooster;
   firing = true;
   catsUsed++;
   updateHUD();
+}
 
-  if (activeBooster === "catSwarm") {
-    consumeBooster("catSwarm");
-    spawnSwarmCats();
+// Mouse released outside the canvas — still trigger launch if pulled far enough
+window.addEventListener("mouseup", () => {
+  if (!firing && catBody && gamePhase === "playing") {
+    if (currentDragDist() >= MIN_DRAG) registerLaunch();
   }
 });
 
+// ── Launch detection (inside canvas) ─────────────────────────────────────────
+Events.on(mouseConstraint, "enddrag", (e) => {
+  if (e.body !== catBody || gamePhase !== "playing") return;
+  // Ignore tiny accidental clicks — prevents sling deadlock
+  if (currentDragDist() < MIN_DRAG) return;
+  registerLaunch();
+});
+
+// ── Booster helpers ───────────────────────────────────────────────────────────
 function consumeBooster(key) {
   if ((playerState.boosters[key] || 0) > 0) {
     playerState.boosters[key]--;
@@ -248,18 +243,45 @@ function consumeBooster(key) {
   }
 }
 
+// Called after sling releases — velocity is real at this point
+function applyPendingBooster() {
+  if (!pendingBooster || !catBody) return;
+
+  if (pendingBooster === "superStrength") {
+    const v = catBody.velocity;
+    Body.setVelocity(catBody, { x: v.x * 1.5, y: v.y * 1.5 });
+    consumeBooster("superStrength");
+  }
+  if (pendingBooster === "slowMotion") {
+    enemies.forEach((en) => {
+      if (en.health > 0) Body.setVelocity(en.body, { x: 0, y: 0 });
+    });
+    consumeBooster("slowMotion");
+  }
+  if (pendingBooster === "catSwarm") {
+    consumeBooster("catSwarm");
+    spawnSwarmCats(); // called AFTER sling releases — real velocity available
+  }
+
+  pendingBooster = null;
+}
+
 function spawnSwarmCats() {
+  if (!catBody) return;
   const props = getCatProperties(selectedCat);
+  const vel = catBody.velocity;
+  const pos = catBody.position;
+
   [-22, 22].forEach((offsetY) => {
-    const sc = Bodies.circle(SLING_X, SLING_Y + offsetY, props.radius, {
+    const sc = Bodies.circle(pos.x, pos.y + offsetY, props.radius, {
       restitution: props.restitution,
       density: props.mass / (Math.PI * props.radius * props.radius),
       render: { fillStyle: props.color },
       label: "cat_swarm",
     });
-    const baseVel = catBody ? catBody.velocity : { x: 8, y: -5 };
-    Body.setVelocity(sc, { x: baseVel.x * 0.9, y: baseVel.y + offsetY * 0.05 });
+    Body.setVelocity(sc, { x: vel.x * 0.9, y: vel.y + offsetY * 0.04 });
     World.add(engine.world, sc);
+    swarmBodies.push(sc);
   });
 }
 
@@ -273,12 +295,16 @@ Events.on(engine, "collisionStart", (event) => {
 
 function tryDamage(attacker, target) {
   if (!attacker.label || !attacker.label.startsWith("cat_")) return;
-  if (!target.label || !target.label.startsWith("enemy_")) return;
+  if (!target.label   || !target.label.startsWith("enemy_")) return;
   const rec = enemies.find((e) => e.body === target);
   if (!rec || rec.health <= 0) return;
 
+  // meteorShower booster doubles damage — consumed on first hit
   let dmg = 1;
-  if (activeBooster === "meteorShower") { dmg = 2; consumeBooster("meteorShower"); }
+  if (activeBooster === "meteorShower") {
+    dmg = 2;
+    consumeBooster("meteorShower");
+  }
 
   rec.health -= dmg;
   if (rec.health <= 0) {
@@ -295,7 +321,7 @@ function tryDamage(attacker, target) {
 Events.on(engine, "afterUpdate", () => {
   if (gamePhase !== "playing") return;
 
-  // Clamp pull distance so cat can't be dragged off-screen or past max pull
+  // Clamp pull distance while dragging (prevents mouse-left-of-canvas deadlock)
   if (catBody && !firing) {
     const dx = catBody.position.x - SLING_X;
     const dy = catBody.position.y - SLING_Y;
@@ -309,37 +335,47 @@ Events.on(engine, "afterUpdate", () => {
     }
   }
 
-  // Detach sling constraint once cat moves far enough away
+  // Detach sling once cat moves far enough — THEN apply multipliers & boosters
   if (firing && catBody && slingConstraint) {
     const dx = catBody.position.x - SLING_X;
     const dy = catBody.position.y - SLING_Y;
     if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
       World.remove(engine.world, slingConstraint);
       slingConstraint = null;
+
+      // Apply cat speed multiplier (real velocity now available)
+      const catProps = getCatProperties(selectedCat);
+      if (catProps.speedMultiplier !== 1.0) {
+        const v = catBody.velocity;
+        Body.setVelocity(catBody, {
+          x: v.x * catProps.speedMultiplier,
+          y: v.y * catProps.speedMultiplier,
+        });
+      }
+
+      // Apply booster effects (also now have real velocity)
+      applyPendingBooster();
     }
   }
 
-  // Check if fired cat has settled or left screen — then spawn next
+  // Cat has landed or left screen — spawn next or trigger lose
   if (firing && catBody && !slingConstraint) {
     const pos = catBody.position;
     const vel = catBody.velocity;
     const offScreen = pos.x > W + 60 || pos.y > H + 60 || pos.x < -60;
-    const settled = Math.abs(vel.x) < 0.8 && Math.abs(vel.y) < 0.8 && pos.x > SLING_X + 40;
+    const settled   = Math.abs(vel.x) < 0.8 && Math.abs(vel.y) < 0.8 && pos.x > SLING_X + 40;
 
     if (offScreen || settled) {
       World.remove(engine.world, catBody);
       catBody = null;
       firing = false;
 
+      if (enemies.filter((e) => e.health > 0).length === 0) return; // win handled
+
       const cfg = getLevel(currentLevel);
-      const aliveEnemies = enemies.filter((e) => e.health > 0);
-
-      if (aliveEnemies.length === 0) return; // win already handled by checkWin
-
       if (catsUsed < cfg.catLimit) {
         spawnCat();
       } else {
-        // Out of cats — lose
         triggerLose();
       }
     }
@@ -352,9 +388,9 @@ function checkWin() {
   if (enemies.filter((e) => e.health > 0).length > 0) return;
 
   gamePhase = "won";
-  const cfg = getLevel(currentLevel);
+  const cfg      = getLevel(currentLevel);
   const catsLeft = Math.max(0, cfg.catLimit - catsUsed);
-  const bonus = catsLeft * 50;
+  const bonus    = catsLeft * 50;
   score += bonus;
   elScoreCount.textContent = score;
 
@@ -369,7 +405,9 @@ function checkWin() {
   if (stars > prevStars) playerState.levelStars[currentLevel] = stars;
   const best = playerState.highScores[currentLevel] || 0;
   if (score > best) playerState.highScores[currentLevel] = score;
-  if (currentLevel < TOTAL_LEVELS) playerState.currentLevel = Math.max(playerState.currentLevel || 1, currentLevel + 1);
+  if (currentLevel < TOTAL_LEVELS) {
+    playerState.currentLevel = Math.max(playerState.currentLevel || 1, currentLevel + 1);
+  }
   savePlayerState(playerState);
   setTimeout(() => showScreen("win", stars), 800);
 }
@@ -407,13 +445,12 @@ function floatScore(text, pos) {
 Events.on(render, "afterRender", () => {
   const ctx = render.context;
 
-  // Enemy emojis & health bars
   enemies.forEach((en) => {
     if (en.health <= 0) return;
-    const pos = en.body.position;
+    const pos   = en.body.position;
     const props = getEnemyProperties(en.type);
-    ctx.font = `${props.radius * 1.6}px serif`;
-    ctx.textAlign = "center";
+    ctx.font         = `${props.radius * 1.6}px serif`;
+    ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(props.symbol, pos.x, pos.y);
 
@@ -430,14 +467,14 @@ Events.on(render, "afterRender", () => {
   // Cat emoji on sling body
   if (catBody) {
     const props = getCatProperties(selectedCat);
-    const pos = catBody.position;
-    ctx.font = `${props.radius * 1.8}px serif`;
-    ctx.textAlign = "center";
+    const pos   = catBody.position;
+    ctx.font         = `${props.radius * 1.8}px serif`;
+    ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("🐱", pos.x, pos.y);
   }
 
-  // Aim guide while pulling back
+  // Aim guide while dragging back
   if (catBody && !firing) {
     const dx = catBody.position.x - SLING_X;
     const dy = catBody.position.y - SLING_Y;
@@ -455,9 +492,11 @@ function drawAimGuide(start, vel) {
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(start.x, start.y);
-  let px = start.x, py = start.y, vx = vel.x * 0.045, vy = vel.y * 0.045;
+  let px = start.x, py = start.y;
+  let vx = vel.x * 0.045, vy = vel.y * 0.045;
   for (let i = 0; i < 30; i++) {
-    vx *= 0.995; vy += 0.18; px += vx * 3; py += vy * 3;
+    vx *= 0.995; vy += 0.18;
+    px += vx * 3; py += vy * 3;
     if (px > W || py > H || px < 0) break;
     ctx.lineTo(px, py);
   }
@@ -476,31 +515,34 @@ function showScreen(type, stars) {
   const tier = getTier(currentLevel);
 
   if (type === "win") {
-    const next = currentLevel + 1;
+    const next     = currentLevel + 1;
     const gemBonus = GAME_CONFIG.gemsPerLevel + (stars * 5);
-    const isLast = currentLevel >= TOTAL_LEVELS;
+    const isLast   = currentLevel >= TOTAL_LEVELS;
     elScreenTitle.innerHTML = isLast ? "🎉 You Won POUNCE!" : "🏆 Level Complete!";
     elScreenBody.innerHTML =
       starsHTML(stars) + "<br>" +
       `<span class="tier-label" style="color:${tier.color}">${tier.label}</span> Level ${currentLevel}<br>` +
       `Score: <strong>${score}</strong><br>` +
       `+${gemBonus} 💎 earned` +
-      (isLast ? "<br><em>All levels cleared!</em>" : "");
+      (isLast ? "<br><em>All 20 levels cleared!</em>" : "");
     if (!isLast) addBtn("Next Level ▶", "primary", () => loadLevel(next));
     addBtn("Replay", "secondary", () => loadLevel(currentLevel));
-    addBtn("Levels", "secondary", showLevelSelect);
+    addBtn("Levels",  "secondary", showLevelSelect);
   } else if (type === "lose") {
     elScreenTitle.textContent = "😿 Level Failed!";
     elScreenBody.innerHTML =
       `<span class="tier-label" style="color:${tier.color}">${tier.label}</span> Level ${currentLevel}<br>` +
       `Lives: <strong>${playerState.lives} ❤️</strong><br>` +
-      (playerState.lives === 0 ? "Out of lives! Wait 30 min or use 99 💎" : "Try again?");
+      (playerState.lives === 0
+        ? "Out of lives! Wait 30 min or use 99 💎"
+        : "Try again?");
     if (playerState.lives > 0) {
       addBtn("Retry 🔄", "primary", () => loadLevel(currentLevel));
     } else {
       addBtn("Refill Lives (99 💎)", "gem", () => {
         if (playerState.gems >= 99) {
-          playerState.gems -= 99; playerState.lives = playerState.maxLives;
+          playerState.gems -= 99;
+          playerState.lives = playerState.maxLives;
           playerState.stats.gemsSpent += 99;
           savePlayerState(playerState);
           loadLevel(currentLevel);
@@ -528,12 +570,10 @@ function showLevelSelect() {
   elScreenTitle.textContent = "🗺️ Level Select";
   elScreenBtns.innerHTML = "";
 
-  const unlocked = playerState.currentLevel || 1;
+  const unlocked   = playerState.currentLevel || 1;
   const levelStars = playerState.levelStars || {};
 
-  // Group by tier
-  const tierOrder = ["easy", "medium", "hard", "brutal"];
-  tierOrder.forEach((tierKey) => {
+  ["easy", "medium", "hard", "brutal"].forEach((tierKey) => {
     const t = DIFFICULTY_TIERS[tierKey];
     const header = document.createElement("div");
     header.className = "tier-header";
@@ -541,9 +581,9 @@ function showLevelSelect() {
     elScreenBtns.appendChild(header);
 
     for (let i = t.levels[0]; i <= t.levels[1]; i++) {
-      const ok = i <= unlocked;
+      const ok    = i <= unlocked;
       const stars = levelStars[i] || 0;
-      const btn = document.createElement("button");
+      const btn   = document.createElement("button");
       btn.className = "screen-btn level-select-btn";
       btn.style.borderColor = ok ? t.color : "#333";
       btn.style.opacity = ok ? "1" : "0.3";
@@ -563,23 +603,20 @@ function showLevelSelect() {
   back.style.marginTop = "16px";
   back.addEventListener("click", () => elOverlay.classList.add("hidden"));
   elScreenBtns.appendChild(back);
-
   elScreenBody.textContent = "";
 }
 
 // ── Load level ────────────────────────────────────────────────────────────────
 function loadLevel(num) {
   currentLevel = Math.max(1, Math.min(num, TOTAL_LEVELS));
-  score = 0;
-  catsUsed = 0;
-  gamePhase = "playing";
-  activeBooster = null;
+  score        = 0;
+  catsUsed     = 0;
+  gamePhase    = "playing";
+  activeBooster  = null;
+  pendingBooster = null;
   elOverlay.classList.add("hidden");
 
-  // Tier-based sky colour
-  const tier = getTier(currentLevel);
-  render.options.background = tier.bg;
-
+  render.options.background = getTier(currentLevel).bg;
   clearLevel();
   buildLevel(getLevel(currentLevel));
   spawnCat();
@@ -598,7 +635,8 @@ function checkAndShowDailyBonus() {
     `Login streak: <strong>${result.streak} day${result.streak > 1 ? "s" : ""}</strong>`;
   elDailyPopup.classList.remove("hidden");
   document.getElementById("daily-bonus-ok").addEventListener("click", () => {
-    elDailyPopup.classList.add("hidden"); updateHUD();
+    elDailyPopup.classList.add("hidden");
+    updateHUD();
   }, { once: true });
 }
 

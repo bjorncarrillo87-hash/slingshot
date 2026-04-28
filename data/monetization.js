@@ -46,6 +46,7 @@ const DEFAULT_PLAYER_STATE = {
   lastLifeRefill: null,
   currentLevel: 1,
   highScores: {},
+  levelStars: {},
   boosters: { meteorShower: 0, superStrength: 0, slowMotion: 0, catSwarm: 0 },
   lastLoginDate: null,
   loginStreak: 0,
@@ -60,11 +61,22 @@ const DEFAULT_PLAYER_STATE = {
 };
 
 function loadPlayerState() {
+  // Always start from a deep-cloned default so nested objects aren't shared
+  const def = JSON.parse(JSON.stringify(DEFAULT_PLAYER_STATE));
   try {
     const saved = localStorage.getItem("pounce_player");
-    if (saved) return Object.assign({}, DEFAULT_PLAYER_STATE, JSON.parse(saved));
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Shallow-merge top-level, then deep-merge each nested object
+      const merged = Object.assign({}, def, parsed);
+      merged.stats      = Object.assign({}, def.stats,      parsed.stats      || {});
+      merged.boosters   = Object.assign({}, def.boosters,   parsed.boosters   || {});
+      merged.highScores = Object.assign({}, parsed.highScores || {});
+      merged.levelStars = Object.assign({}, parsed.levelStars || {});
+      return merged;
+    }
   } catch (e) {}
-  return Object.assign({}, DEFAULT_PLAYER_STATE);
+  return def;
 }
 
 function savePlayerState(state) {
