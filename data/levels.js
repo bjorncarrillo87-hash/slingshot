@@ -27,7 +27,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 2, tier: "easy", catLimit: 5, targetScore: 400,
+    level: 2, tier: "easy", catLimit: 5, targetScore: 300,
     enemies: [
       { type: "mouse", x: 740, y: 548 },
       { type: "mouse", x: 850, y: 548 },
@@ -38,7 +38,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 3, tier: "easy", catLimit: 6, targetScore: 500,
+    level: 3, tier: "easy", catLimit: 6, targetScore: 350,
     enemies: [
       { type: "mouse",  x: 730, y: 548 },
       { type: "pigeon", x: 860, y: 476 },
@@ -50,7 +50,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 4, tier: "easy", catLimit: 6, targetScore: 700,
+    level: 4, tier: "easy", catLimit: 6, targetScore: 400,
     enemies: [
       { type: "pigeon", x: 730, y: 476 },
       { type: "mouse",  x: 850, y: 548 },
@@ -63,7 +63,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 5, tier: "easy", catLimit: 7, targetScore: 900,
+    level: 5, tier: "easy", catLimit: 7, targetScore: 480,
     enemies: [
       { type: "mouse",    x: 710, y: 548 },
       { type: "pigeon",   x: 840, y: 476 },
@@ -77,7 +77,7 @@ const LEVELS = [
   },
   // ── MEDIUM ────────────────────────────────────────────────────────────────
   {
-    level: 6, tier: "medium", catLimit: 7, targetScore: 1100,
+    level: 6, tier: "medium", catLimit: 7, targetScore: 500,
     enemies: [
       { type: "squirrel", x: 730,  y: 547 },
       { type: "pigeon",   x: 860,  y: 416 },
@@ -91,7 +91,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 7, tier: "medium", catLimit: 8, targetScore: 1400,
+    level: 7, tier: "medium", catLimit: 8, targetScore: 440,
     enemies: [
       { type: "mouse", x: 700, y: 548 },
       { type: "dog",   x: 840, y: 473 },
@@ -103,7 +103,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 8, tier: "medium", catLimit: 8, targetScore: 1700,
+    level: 8, tier: "medium", catLimit: 8, targetScore: 520,
     enemies: [
       { type: "dog",    x: 760, y: 473 },
       { type: "pigeon", x: 910, y: 476 },
@@ -116,7 +116,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 9, tier: "medium", catLimit: 8, targetScore: 2000,
+    level: 9, tier: "medium", catLimit: 8, targetScore: 650,
     enemies: [
       { type: "squirrel", x: 690,  y: 547 },
       { type: "dog",      x: 830,  y: 473 },
@@ -130,7 +130,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 10, tier: "medium", catLimit: 9, targetScore: 2500,
+    level: 10, tier: "medium", catLimit: 9, targetScore: 680,
     enemies: [
       { type: "dog",    x: 750,  y: 473 },
       { type: "dog",    x: 910,  y: 473 },
@@ -145,7 +145,7 @@ const LEVELS = [
   },
   // ── HARD ──────────────────────────────────────────────────────────────────
   {
-    level: 11, tier: "hard", catLimit: 8, targetScore: 1800,
+    level: 11, tier: "hard", catLimit: 8, targetScore: 480,
     enemies: [
       { type: "mouse",    x: 700, y: 548 },
       { type: "dog",      x: 840, y: 473 },
@@ -157,7 +157,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 12, tier: "hard", catLimit: 9, targetScore: 2200,
+    level: 12, tier: "hard", catLimit: 9, targetScore: 650,
     enemies: [
       { type: "dog",      x: 750, y: 473 },
       { type: "squirrel", x: 870, y: 547 },
@@ -170,7 +170,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 13, tier: "hard", catLimit: 9, targetScore: 2600,
+    level: 13, tier: "hard", catLimit: 9, targetScore: 550,
     enemies: [
       { type: "mouse",  x: 710, y: 548 },
       { type: "pigeon", x: 840, y: 416 },
@@ -184,7 +184,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 14, tier: "hard", catLimit: 8, targetScore: 2800,
+    level: 14, tier: "hard", catLimit: 8, targetScore: 650,
     enemies: [
       { type: "squirrel", x: 720, y: 547 },
       { type: "squirrel", x: 800, y: 547 },
@@ -198,7 +198,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 15, tier: "hard", catLimit: 9, targetScore: 3200,
+    level: 15, tier: "hard", catLimit: 9, targetScore: 750,
     enemies: [
       { type: "mouse",  x: 680, y: 548 },
       { type: "pigeon", x: 760, y: 476 },
@@ -215,7 +215,7 @@ const LEVELS = [
   },
   // ── BRUTAL ────────────────────────────────────────────────────────────────
   {
-    level: 16, tier: "brutal", catLimit: 9, targetScore: 3600,
+    level: 16, tier: "brutal", catLimit: 9, targetScore: 620,
     enemies: [
       { type: "dog",    x: 760, y: 413 },
       { type: "mouse",  x: 860, y: 548 },
@@ -230,7 +230,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 17, tier: "brutal", catLimit: 9, targetScore: 4000,
+    level: 17, tier: "brutal", catLimit: 9, targetScore: 720,
     enemies: [
       { type: "pigeon",   x: 700, y: 476 },
       { type: "dog",      x: 840, y: 413 },
@@ -246,7 +246,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 18, tier: "brutal", catLimit: 9, targetScore: 4400,
+    level: 18, tier: "brutal", catLimit: 9, targetScore: 750,
     enemies: [
       { type: "dog",    x: 760, y: 473 },
       { type: "pigeon", x: 850, y: 416 },
@@ -261,7 +261,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 19, tier: "brutal", catLimit: 10, targetScore: 4800,
+    level: 19, tier: "brutal", catLimit: 10, targetScore: 820,
     enemies: [
       { type: "mouse",    x: 660,  y: 548 },
       { type: "squirrel", x: 750,  y: 547 },
@@ -277,7 +277,7 @@ const LEVELS = [
     ],
   },
   {
-    level: 20, tier: "brutal", catLimit: 10, targetScore: 5500,
+    level: 20, tier: "brutal", catLimit: 10, targetScore: 950,
     enemies: [
       { type: "dog",    x: 730, y: 473 },
       { type: "pigeon", x: 820, y: 416 },

@@ -1,6 +1,6 @@
 "use strict";
 
-const { Engine, Render, Runner, World, Bodies, Body, Constraint, Mouse, MouseConstraint, Events, Vector } = Matter;
+const { Engine, Render, Runner, World, Bodies, Body, Constraint, Mouse, MouseConstraint, Events } = Matter;
 
 const W = GAME_CONFIG.canvas.width;
 const H = GAME_CONFIG.canvas.height;
@@ -370,6 +370,13 @@ Events.on(engine, "afterUpdate", () => {
       catBody = null;
       firing = false;
 
+      // meteorShower is consumed on hit inside tryDamage; if the cat missed,
+      // deactivate it so it doesn't silently carry over to the next shot.
+      if (activeBooster === "meteorShower") {
+        activeBooster = null;
+        updateHUD();
+      }
+
       if (enemies.filter((e) => e.health > 0).length === 0) return; // win handled
 
       const cfg = getLevel(currentLevel);
@@ -390,7 +397,7 @@ function checkWin() {
   gamePhase = "won";
   const cfg      = getLevel(currentLevel);
   const catsLeft = Math.max(0, cfg.catLimit - catsUsed);
-  const bonus    = catsLeft * 50;
+  const bonus    = catsLeft * GAME_CONFIG.unusedCatBonus;
   score += bonus;
   elScoreCount.textContent = score;
 

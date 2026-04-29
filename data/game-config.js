@@ -6,17 +6,17 @@ const GAME_CONFIG = {
   lifeRefillCost: 99,
   gemsPerLevel: 10,
   startingGems: 50,
+  unusedCatBonus: 50,
   canvas: { width: 1200, height: 650 },
   slingAnchor: { x: 200, y: 480 },
   groundY: 580,
-  launchForce: 0.035,
 };
 
 const DIFFICULTY_TIERS = {
-  easy:   { label: "Easy",   levels: [1,  5],  color: "#4caf50", bg: "#071a0f", starMultiplier: 1.2 },
-  medium: { label: "Medium", levels: [6,  10], color: "#ffc107", bg: "#1a1500", starMultiplier: 1.5 },
-  hard:   { label: "Hard",   levels: [11, 15], color: "#ff7043", bg: "#1a0a00", starMultiplier: 1.8 },
-  brutal: { label: "BRUTAL", levels: [16, 20], color: "#e53935", bg: "#0f0000", starMultiplier: 2.0 },
+  easy:   { label: "Easy",   levels: [1,  5],  color: "#4caf50", bg: "#071a0f" },
+  medium: { label: "Medium", levels: [6,  10], color: "#ffc107", bg: "#1a1500" },
+  hard:   { label: "Hard",   levels: [11, 15], color: "#ff7043", bg: "#1a0a00" },
+  brutal: { label: "BRUTAL", levels: [16, 20], color: "#e53935", bg: "#0f0000" },
 };
 
 function getTier(levelNum) {
