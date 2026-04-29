@@ -321,16 +321,22 @@ function tryDamage(attacker, target) {
 Events.on(engine, "afterUpdate", () => {
   if (gamePhase !== "playing") return;
 
-  // Clamp pull distance while dragging (prevents mouse-left-of-canvas deadlock)
+  // Clamp cat: only draggable LEFT of anchor; max pull radius
   if (catBody && !firing) {
-    const dx = catBody.position.x - SLING_X;
-    const dy = catBody.position.y - SLING_Y;
+    let nx = catBody.position.x;
+    let ny = catBody.position.y;
+    let clamped = false;
+    if (nx > SLING_X) { nx = SLING_X; clamped = true; }
+    const dx = nx - SLING_X;
+    const dy = ny - SLING_Y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > MAX_PULL) {
-      Body.setPosition(catBody, {
-        x: SLING_X + (dx / dist) * MAX_PULL,
-        y: SLING_Y + (dy / dist) * MAX_PULL,
-      });
+      nx = SLING_X + (dx / dist) * MAX_PULL;
+      ny = SLING_Y + (dy / dist) * MAX_PULL;
+      clamped = true;
+    }
+    if (clamped) {
+      Body.setPosition(catBody, { x: nx, y: ny });
       Body.setVelocity(catBody, { x: 0, y: 0 });
     }
   }
